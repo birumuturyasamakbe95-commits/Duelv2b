@@ -146,6 +146,12 @@ mainFrame.BackgroundColor3       = Color3.fromRGB(6, 6, 10)
 mainFrame.BackgroundTransparency = 0
 mainFrame.Image                  = ASSET_OPEN
 mainFrame.ScaleType              = Enum.ScaleType.Stretch
+-- fallback if asset fails
+task.defer(function()
+    if mainFrame.Image == "" or mainFrame.IsLoaded == false then
+        mainFrame.Image = "rbxthumb://type=Asset&id=80752529164731&w=768&h=432"
+    end
+end)
 mainFrame.Active                 = true
 mainFrame.ClipsDescendants       = true
 mainFrame.BorderSizePixel        = 0
@@ -211,18 +217,6 @@ uiVal.Font                   = Enum.Font.GothamBold
 uiVal.TextSize               = 12
 uiVal.Parent                 = content
 
--- ON/OFF status next to UI SIZE (clickable)
-local statusBtn = Instance.new("TextButton")
-statusBtn.Name                   = "StatusBtn"
-statusBtn.Size                   = UDim2.new(0, 36, 0, 18)
-statusBtn.Position               = UDim2.new(0.42, 0, 0.082, 0)
-statusBtn.BackgroundTransparency = 1
-statusBtn.Text                   = "OFF"
-statusBtn.TextColor3             = C.red
-statusBtn.Font                   = Enum.Font.GothamBlack
-statusBtn.TextSize               = 12
-statusBtn.AutoButtonColor        = false
-statusBtn.Parent                 = content
 
 local uiMinus = Instance.new("TextButton")
 uiMinus.Size                   = UDim2.new(0, 24, 0, 24)
@@ -701,13 +695,11 @@ local function updateBtn()
         mainBtn.Text = "ON"
         mainBtn.TextColor3 = C.green
         mStroke.Color = C.green
-        if statusBtn then statusBtn.Text = "ON"; statusBtn.TextColor3 = C.green end
         if cStatus then cStatus.Text = "ON"; cStatus.TextColor3 = C.green end
     else
         mainBtn.Text = "OFF"
         mainBtn.TextColor3 = C.red
         mStroke.Color = C.red
-        if statusBtn then statusBtn.Text = "OFF"; statusBtn.TextColor3 = C.red end
         if cStatus then cStatus.Text = "OFF"; cStatus.TextColor3 = C.red end
     end
 end
@@ -728,7 +720,6 @@ local function flipLag(state, isManual)
 end
 
 mainBtn.MouseButton1Click:Connect(function() flipLag(not active, true) end)
-statusBtn.MouseButton1Click:Connect(function() flipLag(not active, true) end)
 cStatus.MouseButton1Click:Connect(function() flipLag(not active, true) end)
 
 RunService.Heartbeat:Connect(function()
