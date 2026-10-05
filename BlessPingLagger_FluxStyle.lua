@@ -1,18 +1,18 @@
--- Bless Ping Lagger + Auto Activate (Flux Style - Exact Match)
--- Asset: Open 118338031849701 | Closed 126797538009910
+-- Bless Ping Lagger + Auto Activate (Flux Style - Final)
+-- Open Asset : 80752529164731
+-- Closed Asset: 124624013597906
+-- AntiLag from Supreme.vs
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
 local HttpService      = game:GetService("HttpService")
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
+local Workspace        = game:GetService("Workspace")
 
 local plr    = Players.LocalPlayer
 local plrGui = plr:WaitForChild("PlayerGui")
 
--- ══════════════════════════════════════════════════════════════════════
--- CONFIG
--- ══════════════════════════════════════════════════════════════════════
 local CONFIG_FILE = "BlessPingLagger_Config.json"
 
 local DEFAULT_CFG = {
@@ -65,25 +65,21 @@ loadConfig()
 local active, listeningFor, remote = false, nil, nil
 local brainrotMode, lastBrainrotState, manualOverride = false, false, false
 local isMinimized = false
+local antiLagEnabled = false
+local antiLagDescConn = nil
 
--- ══════════════════════════════════════════════════════════════════════
--- COLOURS
--- ══════════════════════════════════════════════════════════════════════
 local C = {
     white     = Color3.fromRGB(255,255,255),
-    offWhite  = Color3.fromRGB(225,225,225),
-    gray      = Color3.fromRGB(160,160,160),
-    inputBg   = Color3.fromRGB(22,22,30),
-    toggleOn  = Color3.fromRGB(70,255,120),
-    toggleOff = Color3.fromRGB(50,50,60),
-    red       = Color3.fromRGB(255,55,55),
-    green     = Color3.fromRGB(70,255,120),
-    yellow    = Color3.fromRGB(255,210,70),
+    offWhite  = Color3.fromRGB(230,230,230),
+    gray      = Color3.fromRGB(165,165,165),
+    inputBg   = Color3.fromRGB(18,18,25),
+    toggleOn  = Color3.fromRGB(60,255,110),
+    toggleOff = Color3.fromRGB(45,45,55),
+    red       = Color3.fromRGB(255,50,50),
+    green     = Color3.fromRGB(60,255,110),
+    yellow    = Color3.fromRGB(255,205,60),
 }
 
--- ══════════════════════════════════════════════════════════════════════
--- CLEAN OLD
--- ══════════════════════════════════════════════════════════════════════
 for _, v in pairs(plrGui:GetChildren()) do
     if v.Name == "FluxPingLaggerGui" or v.Name == "BlessPingLaggerGui" then
         v:Destroy()
@@ -93,15 +89,12 @@ end
 local screen = Instance.new("ScreenGui")
 screen.Name           = "FluxPingLaggerGui"
 screen.ResetOnSpawn   = false
-screen.DisplayOrder   = 20
+screen.DisplayOrder   = 25
 screen.IgnoreGuiInset = true
 screen.Parent         = plrGui
 
--- ══════════════════════════════════════════════════════════════════════
--- HELPERS
--- ══════════════════════════════════════════════════════════════════════
 local function tw(obj, props, t)
-    TweenService:Create(obj, TweenInfo.new(t or 0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+    TweenService:Create(obj, TweenInfo.new(t or 0.13, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
 
 local function makeDraggable(frame)
@@ -135,27 +128,21 @@ local BLACKLISTED = {
     [Enum.KeyCode.Unknown] = true,
 }
 
--- ══════════════════════════════════════════════════════════════════════
--- ASSETS + SIZES
--- ══════════════════════════════════════════════════════════════════════
-local ASSET_OPEN   = "rbxassetid://118338031849701"
-local ASSET_CLOSED = "rbxassetid://126797538009910"
+local ASSET_OPEN   = "rbxassetid://80752529164731"
+local ASSET_CLOSED = "rbxassetid://124624013597906"
 
-local OPEN_W, OPEN_H     = 270, 430
-local CLOSED_W, CLOSED_H = 270, 92
+local OPEN_W, OPEN_H     = 275, 435
+local CLOSED_W, CLOSED_H = 280, 95
 
 local function getScale()
     return math.clamp(cfg.uiSize / 100, 0.7, 1.35)
 end
 
--- ══════════════════════════════════════════════════════════════════════
--- MAIN FRAME
--- ══════════════════════════════════════════════════════════════════════
 local mainFrame = Instance.new("ImageLabel")
 mainFrame.Name                   = "MainFrame"
 mainFrame.Size                   = UDim2.new(0, OPEN_W, 0, OPEN_H)
-mainFrame.Position               = UDim2.new(0.5, -OPEN_W/2, 0.4, -OPEN_H/2)
-mainFrame.BackgroundColor3       = Color3.fromRGB(8, 8, 12)
+mainFrame.Position               = UDim2.new(0.5, -OPEN_W/2, 0.35, -OPEN_H/2)
+mainFrame.BackgroundColor3       = Color3.fromRGB(6, 6, 10)
 mainFrame.BackgroundTransparency = 0
 mainFrame.Image                  = ASSET_OPEN
 mainFrame.ScaleType              = Enum.ScaleType.Stretch
@@ -165,14 +152,11 @@ mainFrame.BorderSizePixel        = 0
 mainFrame.Parent                 = screen
 
 local cornerMask = Instance.new("UICorner")
-cornerMask.CornerRadius = UDim.new(0, 14)
+cornerMask.CornerRadius = UDim.new(0, 16)
 cornerMask.Parent = mainFrame
 
 makeDraggable(mainFrame)
 
--- ══════════════════════════════════════════════════════════════════════
--- OPEN CONTENT
--- ══════════════════════════════════════════════════════════════════════
 local content = Instance.new("Frame")
 content.Name                   = "Content"
 content.Size                   = UDim2.new(1, 0, 1, 0)
@@ -181,8 +165,8 @@ content.Visible                = true
 content.Parent                 = mainFrame
 
 local title = Instance.new("TextLabel")
-title.Size                   = UDim2.new(0.75, 0, 0, 20)
-title.Position               = UDim2.new(0.05, 0, 0.022, 0)
+title.Size                   = UDim2.new(0.72, 0, 0, 20)
+title.Position               = UDim2.new(0.055, 0, 0.025, 0)
 title.BackgroundTransparency = 1
 title.Text                   = "FLUX PING LAGGER"
 title.TextColor3             = C.white
@@ -192,10 +176,10 @@ title.TextXAlignment         = Enum.TextXAlignment.Left
 title.Parent                 = content
 
 local minBtn = Instance.new("TextButton")
-minBtn.Size                   = UDim2.new(0, 24, 0, 24)
-minBtn.Position               = UDim2.new(1, -32, 0.018, 0)
-minBtn.BackgroundColor3       = Color3.fromRGB(30,30,40)
-minBtn.BackgroundTransparency = 0.35
+minBtn.Size                   = UDim2.new(0, 26, 0, 26)
+minBtn.Position               = UDim2.new(1, -34, 0.020, 0)
+minBtn.BackgroundColor3       = Color3.fromRGB(28,28,38)
+minBtn.BackgroundTransparency = 0.3
 minBtn.BorderSizePixel        = 0
 minBtn.Text                   = "−"
 minBtn.TextColor3             = C.white
@@ -204,11 +188,11 @@ minBtn.TextSize               = 18
 minBtn.AutoButtonColor        = false
 minBtn.ZIndex                 = 6
 minBtn.Parent                 = content
-Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 7)
 
 local uiLbl = Instance.new("TextLabel")
 uiLbl.Size                   = UDim2.new(0.26, 0, 0, 15)
-uiLbl.Position               = UDim2.new(0.05, 0, 0.080, 0)
+uiLbl.Position               = UDim2.new(0.055, 0, 0.085, 0)
 uiLbl.BackgroundTransparency = 1
 uiLbl.Text                   = "UI SIZE"
 uiLbl.TextColor3             = C.offWhite
@@ -219,7 +203,7 @@ uiLbl.Parent                 = content
 
 local uiVal = Instance.new("TextLabel")
 uiVal.Size                   = UDim2.new(0, 32, 0, 15)
-uiVal.Position               = UDim2.new(0.32, 0, 0.080, 0)
+uiVal.Position               = UDim2.new(0.33, 0, 0.085, 0)
 uiVal.BackgroundTransparency = 1
 uiVal.Text                   = tostring(cfg.uiSize)
 uiVal.TextColor3             = C.white
@@ -228,10 +212,10 @@ uiVal.TextSize               = 12
 uiVal.Parent                 = content
 
 local uiMinus = Instance.new("TextButton")
-uiMinus.Size                   = UDim2.new(0, 22, 0, 22)
-uiMinus.Position               = UDim2.new(0.48, 0, 0.073, 0)
-uiMinus.BackgroundColor3       = Color3.fromRGB(35,35,48)
-uiMinus.BackgroundTransparency = 0.25
+uiMinus.Size                   = UDim2.new(0, 24, 0, 24)
+uiMinus.Position               = UDim2.new(0.48, 0, 0.078, 0)
+uiMinus.BackgroundColor3       = Color3.fromRGB(32,32,45)
+uiMinus.BackgroundTransparency = 0.2
 uiMinus.BorderSizePixel        = 0
 uiMinus.Text                   = "−"
 uiMinus.TextColor3             = C.white
@@ -239,13 +223,13 @@ uiMinus.Font                   = Enum.Font.GothamBlack
 uiMinus.TextSize               = 15
 uiMinus.AutoButtonColor        = false
 uiMinus.Parent                 = content
-Instance.new("UICorner", uiMinus).CornerRadius = UDim.new(0, 5)
+Instance.new("UICorner", uiMinus).CornerRadius = UDim.new(0, 6)
 
 local uiPlus = Instance.new("TextButton")
-uiPlus.Size                   = UDim2.new(0, 22, 0, 22)
-uiPlus.Position               = UDim2.new(0.58, 0, 0.073, 0)
-uiPlus.BackgroundColor3       = Color3.fromRGB(35,35,48)
-uiPlus.BackgroundTransparency = 0.25
+uiPlus.Size                   = UDim2.new(0, 24, 0, 24)
+uiPlus.Position               = UDim2.new(0.59, 0, 0.078, 0)
+uiPlus.BackgroundColor3       = Color3.fromRGB(32,32,45)
+uiPlus.BackgroundTransparency = 0.2
 uiPlus.BorderSizePixel        = 0
 uiPlus.Text                   = "+"
 uiPlus.TextColor3             = C.white
@@ -253,11 +237,11 @@ uiPlus.Font                   = Enum.Font.GothamBlack
 uiPlus.TextSize               = 15
 uiPlus.AutoButtonColor        = false
 uiPlus.Parent                 = content
-Instance.new("UICorner", uiPlus).CornerRadius = UDim.new(0, 5)
+Instance.new("UICorner", uiPlus).CornerRadius = UDim.new(0, 6)
 
 local keyDisp = Instance.new("TextLabel")
-keyDisp.Size                   = UDim2.new(0, 70, 0, 16)
-keyDisp.Position               = UDim2.new(1, -100, 0.080, 0)
+keyDisp.Size                   = UDim2.new(0, 72, 0, 16)
+keyDisp.Position               = UDim2.new(1, -105, 0.085, 0)
 keyDisp.BackgroundTransparency = 1
 keyDisp.Text                   = cfg.keybindGp ~= "None" and cfg.keybindGp or cfg.keybindKb
 keyDisp.TextColor3             = C.yellow
@@ -268,7 +252,7 @@ keyDisp.Parent                 = content
 
 local disc = Instance.new("TextLabel")
 disc.Size                   = UDim2.new(0.7, 0, 0, 13)
-disc.Position               = UDim2.new(0.05, 0, 0.125, 0)
+disc.Position               = UDim2.new(0.055, 0, 0.130, 0)
 disc.BackgroundTransparency = 1
 disc.Text                   = "discord.gg/fluxhub"
 disc.TextColor3             = C.gray
@@ -279,7 +263,7 @@ disc.Parent                 = content
 
 local pLbl = Instance.new("TextLabel")
 pLbl.Size                   = UDim2.new(0.4, 0, 0, 14)
-pLbl.Position               = UDim2.new(0.05, 0, 0.175, 0)
+pLbl.Position               = UDim2.new(0.055, 0, 0.175, 0)
 pLbl.BackgroundTransparency = 1
 pLbl.Text                   = "POWER"
 pLbl.TextColor3             = C.offWhite
@@ -289,10 +273,10 @@ pLbl.TextXAlignment         = Enum.TextXAlignment.Left
 pLbl.Parent                 = content
 
 local powerBox = Instance.new("TextBox")
-powerBox.Size                   = UDim2.new(0.90, 0, 0, 30)
-powerBox.Position               = UDim2.new(0.05, 0, 0.208, 0)
+powerBox.Size                   = UDim2.new(0.89, 0, 0, 32)
+powerBox.Position               = UDim2.new(0.055, 0, 0.208, 0)
 powerBox.BackgroundColor3       = C.inputBg
-powerBox.BackgroundTransparency = 0.15
+powerBox.BackgroundTransparency = 0.12
 powerBox.BorderSizePixel        = 0
 powerBox.Text                   = tostring(cfg.power)
 powerBox.TextColor3             = C.white
@@ -300,11 +284,11 @@ powerBox.Font                   = Enum.Font.GothamBold
 powerBox.TextSize               = 14
 powerBox.ClearTextOnFocus       = false
 powerBox.Parent                 = content
-Instance.new("UICorner", powerBox).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", powerBox).CornerRadius = UDim.new(0, 9)
 
 local dLbl = Instance.new("TextLabel")
 dLbl.Size                   = UDim2.new(0.4, 0, 0, 14)
-dLbl.Position               = UDim2.new(0.05, 0, 0.295, 0)
+dLbl.Position               = UDim2.new(0.055, 0, 0.300, 0)
 dLbl.BackgroundTransparency = 1
 dLbl.Text                   = "DELAY"
 dLbl.TextColor3             = C.offWhite
@@ -314,10 +298,10 @@ dLbl.TextXAlignment         = Enum.TextXAlignment.Left
 dLbl.Parent                 = content
 
 local delayBox = Instance.new("TextBox")
-delayBox.Size                   = UDim2.new(0.90, 0, 0, 30)
-delayBox.Position               = UDim2.new(0.05, 0, 0.328, 0)
+delayBox.Size                   = UDim2.new(0.89, 0, 0, 32)
+delayBox.Position               = UDim2.new(0.055, 0, 0.333, 0)
 delayBox.BackgroundColor3       = C.inputBg
-delayBox.BackgroundTransparency = 0.15
+delayBox.BackgroundTransparency = 0.12
 delayBox.BorderSizePixel        = 0
 delayBox.Text                   = tostring(cfg.interval)
 delayBox.TextColor3             = C.white
@@ -325,17 +309,17 @@ delayBox.Font                   = Enum.Font.GothamBold
 delayBox.TextSize               = 14
 delayBox.ClearTextOnFocus       = false
 delayBox.Parent                 = content
-Instance.new("UICorner", delayBox).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", delayBox).CornerRadius = UDim.new(0, 9)
 
 local function makeToggle(y, text, initial, cb)
     local row = Instance.new("Frame")
-    row.Size                   = UDim2.new(0.90, 0, 0, 26)
-    row.Position               = UDim2.new(0.05, 0, y, 0)
+    row.Size                   = UDim2.new(0.89, 0, 0, 28)
+    row.Position               = UDim2.new(0.055, 0, y, 0)
     row.BackgroundTransparency = 1
     row.Parent                 = content
 
     local lbl = Instance.new("TextLabel")
-    lbl.Size                   = UDim2.new(0.65, 0, 1, 0)
+    lbl.Size                   = UDim2.new(0.62, 0, 1, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text                   = text
     lbl.TextColor3             = C.offWhite
@@ -345,16 +329,16 @@ local function makeToggle(y, text, initial, cb)
     lbl.Parent                 = row
 
     local track = Instance.new("Frame")
-    track.Size                   = UDim2.new(0, 46, 0, 24)
-    track.Position               = UDim2.new(1, -46, 0.5, -12)
+    track.Size                   = UDim2.new(0, 48, 0, 26)
+    track.Position               = UDim2.new(1, -48, 0.5, -13)
     track.BackgroundColor3       = initial and C.toggleOn or C.toggleOff
     track.BorderSizePixel        = 0
     track.Parent                 = row
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
 
     local knob = Instance.new("Frame")
-    knob.Size                   = UDim2.new(0, 20, 0, 20)
-    knob.Position               = initial and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+    knob.Size                   = UDim2.new(0, 22, 0, 22)
+    knob.Position               = initial and UDim2.new(1, -24, 0.5, -11) or UDim2.new(0, 2, 0.5, -11)
     knob.BackgroundColor3       = C.white
     knob.BorderSizePixel        = 0
     knob.Parent                 = track
@@ -370,7 +354,7 @@ local function makeToggle(y, text, initial, cb)
     btn.MouseButton1Click:Connect(function()
         state = not state
         tw(track, {BackgroundColor3 = state and C.toggleOn or C.toggleOff}, 0.12)
-        tw(knob, {Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)}, 0.12)
+        tw(knob, {Position = state and UDim2.new(1, -24, 0.5, -11) or UDim2.new(0, 2, 0.5, -11)}, 0.12)
         cb(state)
     end)
 
@@ -378,24 +362,74 @@ local function makeToggle(y, text, initial, cb)
         set = function(v)
             state = v
             track.BackgroundColor3 = v and C.toggleOn or C.toggleOff
-            knob.Position = v and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+            knob.Position = v and UDim2.new(1, -24, 0.5, -11) or UDim2.new(0, 2, 0.5, -11)
         end
     }
 end
 
-local autoT = makeToggle(0.420, "AUTO ACTIVATE", cfg.autoActivate, function(v)
+local autoT = makeToggle(0.425, "AUTO ACTIVATE", cfg.autoActivate, function(v)
     cfg.autoActivate = v
     saveConfig()
 end)
 
-local antiT = makeToggle(0.495, "ANTILAG", cfg.antiLag, function(v)
+-- ANTILAG from Supreme.vs
+local function applyAntiLagDerender(obj)
+    pcall(function()
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.Plastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = 1
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam")
+            or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+            obj.Enabled = false
+        elseif obj:IsA("AnimationController") or obj:IsA("Animator") then
+            for _, t in ipairs(obj:GetPlayingAnimationTracks()) do
+                pcall(function() t:Stop(0) end)
+            end
+        end
+    end)
+end
+
+local function enableAntiLag()
+    antiLagEnabled = true
+    task.spawn(function()
+        local descs = Workspace:GetDescendants()
+        local i = 0
+        local total = #descs
+        while i < total and antiLagEnabled do
+            for _ = 1, 200 do
+                i = i + 1
+                if i > total then break end
+                applyAntiLagDerender(descs[i])
+            end
+            task.wait()
+        end
+    end)
+    if antiLagDescConn then antiLagDescConn:Disconnect() end
+    antiLagDescConn = Workspace.DescendantAdded:Connect(function(obj)
+        if antiLagEnabled then applyAntiLagDerender(obj) end
+    end)
+end
+
+local function disableAntiLag()
+    antiLagEnabled = false
+    if antiLagDescConn then
+        antiLagDescConn:Disconnect()
+        antiLagDescConn = nil
+    end
+end
+
+local antiT = makeToggle(0.500, "ANTILAG", cfg.antiLag, function(v)
     cfg.antiLag = v
     saveConfig()
+    if v then enableAntiLag() else disableAntiLag() end
 end)
 
 local bgLbl = Instance.new("TextLabel")
 bgLbl.Size                   = UDim2.new(0.5, 0, 0, 14)
-bgLbl.Position               = UDim2.new(0.05, 0, 0.570, 0)
+bgLbl.Position               = UDim2.new(0.055, 0, 0.575, 0)
 bgLbl.BackgroundTransparency = 1
 bgLbl.Text                   = "BACKGROUND"
 bgLbl.TextColor3             = C.offWhite
@@ -405,10 +439,10 @@ bgLbl.TextXAlignment         = Enum.TextXAlignment.Left
 bgLbl.Parent                 = content
 
 local bgBtn = Instance.new("TextButton")
-bgBtn.Size                   = UDim2.new(0.90, 0, 0, 28)
-bgBtn.Position               = UDim2.new(0.05, 0, 0.605, 0)
+bgBtn.Size                   = UDim2.new(0.89, 0, 0, 28)
+bgBtn.Position               = UDim2.new(0.055, 0, 0.610, 0)
 bgBtn.BackgroundColor3       = C.inputBg
-bgBtn.BackgroundTransparency = 0.15
+bgBtn.BackgroundTransparency = 0.12
 bgBtn.BorderSizePixel        = 0
 bgBtn.Text                   = "  Default  ▼"
 bgBtn.TextColor3             = C.white
@@ -420,10 +454,10 @@ bgBtn.Parent                 = content
 Instance.new("UICorner", bgBtn).CornerRadius = UDim.new(0, 8)
 
 local mainBtn = Instance.new("TextButton")
-mainBtn.Size                   = UDim2.new(0.90, 0, 0, 42)
-mainBtn.Position               = UDim2.new(0.05, 0, 0.700, 0)
-mainBtn.BackgroundColor3       = Color3.fromRGB(35,35,45)
-mainBtn.BackgroundTransparency = 0.1
+mainBtn.Size                   = UDim2.new(0.89, 0, 0, 44)
+mainBtn.Position               = UDim2.new(0.055, 0, 0.700, 0)
+mainBtn.BackgroundColor3       = Color3.fromRGB(30,30,40)
+mainBtn.BackgroundTransparency = 0.08
 mainBtn.BorderSizePixel        = 0
 mainBtn.Text                   = "OFF"
 mainBtn.TextColor3             = C.red
@@ -431,17 +465,17 @@ mainBtn.Font                   = Enum.Font.GothamBlack
 mainBtn.TextSize               = 17
 mainBtn.AutoButtonColor        = false
 mainBtn.Parent                 = content
-Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 11)
 local mStroke = Instance.new("UIStroke", mainBtn)
 mStroke.Color        = C.red
-mStroke.Thickness    = 1.5
-mStroke.Transparency = 0.2
+mStroke.Thickness    = 1.6
+mStroke.Transparency = 0.15
 
 local saveBtn = Instance.new("TextButton")
-saveBtn.Size                   = UDim2.new(0.90, 0, 0, 32)
-saveBtn.Position               = UDim2.new(0.05, 0, 0.825, 0)
-saveBtn.BackgroundColor3       = Color3.fromRGB(32,32,42)
-saveBtn.BackgroundTransparency = 0.15
+saveBtn.Size                   = UDim2.new(0.89, 0, 0, 32)
+saveBtn.Position               = UDim2.new(0.055, 0, 0.830, 0)
+saveBtn.BackgroundColor3       = Color3.fromRGB(28,28,38)
+saveBtn.BackgroundTransparency = 0.12
 saveBtn.BorderSizePixel        = 0
 saveBtn.Text                   = "SAVE CONFIG"
 saveBtn.TextColor3             = C.white
@@ -449,11 +483,8 @@ saveBtn.Font                   = Enum.Font.GothamBold
 saveBtn.TextSize               = 13
 saveBtn.AutoButtonColor        = false
 saveBtn.Parent                 = content
-Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 9)
 
--- ══════════════════════════════════════════════════════════════════════
--- CLOSED CONTENT
--- ══════════════════════════════════════════════════════════════════════
 local closed = Instance.new("Frame")
 closed.Name                   = "ClosedContent"
 closed.Size                   = UDim2.new(1, 0, 1, 0)
@@ -462,8 +493,8 @@ closed.Visible                = false
 closed.Parent                 = mainFrame
 
 local cTitle = Instance.new("TextLabel")
-cTitle.Size                   = UDim2.new(0.72, 0, 0, 18)
-cTitle.Position               = UDim2.new(0.05, 0, 0.14, 0)
+cTitle.Size                   = UDim2.new(0.70, 0, 0, 18)
+cTitle.Position               = UDim2.new(0.05, 0, 0.15, 0)
 cTitle.BackgroundTransparency = 1
 cTitle.Text                   = "FLUX PING LAGGER"
 cTitle.TextColor3             = C.white
@@ -474,7 +505,7 @@ cTitle.Parent                 = closed
 
 local cUi = Instance.new("TextLabel")
 cUi.Size                   = UDim2.new(0.26, 0, 0, 14)
-cUi.Position               = UDim2.new(0.05, 0, 0.45, 0)
+cUi.Position               = UDim2.new(0.05, 0, 0.46, 0)
 cUi.BackgroundTransparency = 1
 cUi.Text                   = "UI SIZE"
 cUi.TextColor3             = C.offWhite
@@ -484,8 +515,8 @@ cUi.TextXAlignment         = Enum.TextXAlignment.Left
 cUi.Parent                 = closed
 
 local cVal = Instance.new("TextLabel")
-cVal.Size                   = UDim2.new(0, 28, 0, 14)
-cVal.Position               = UDim2.new(0.32, 0, 0.45, 0)
+cVal.Size                   = UDim2.new(0, 30, 0, 14)
+cVal.Position               = UDim2.new(0.32, 0, 0.46, 0)
 cVal.BackgroundTransparency = 1
 cVal.Text                   = tostring(cfg.uiSize)
 cVal.TextColor3             = C.white
@@ -494,10 +525,10 @@ cVal.TextSize               = 11
 cVal.Parent                 = closed
 
 local cPlus = Instance.new("TextButton")
-cPlus.Size                   = UDim2.new(0, 24, 0, 24)
-cPlus.Position               = UDim2.new(1, -34, 0.14, 0)
-cPlus.BackgroundColor3       = Color3.fromRGB(35,35,48)
-cPlus.BackgroundTransparency = 0.3
+cPlus.Size                   = UDim2.new(0, 26, 0, 26)
+cPlus.Position               = UDim2.new(1, -36, 0.14, 0)
+cPlus.BackgroundColor3       = Color3.fromRGB(32,32,45)
+cPlus.BackgroundTransparency = 0.25
 cPlus.BorderSizePixel        = 0
 cPlus.Text                   = "+"
 cPlus.TextColor3             = C.white
@@ -506,7 +537,7 @@ cPlus.TextSize               = 16
 cPlus.AutoButtonColor        = false
 cPlus.ZIndex                 = 6
 cPlus.Parent                 = closed
-Instance.new("UICorner", cPlus).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", cPlus).CornerRadius = UDim.new(0, 7)
 
 local cDisc = Instance.new("TextLabel")
 cDisc.Size                   = UDim2.new(0.6, 0, 0, 12)
@@ -521,7 +552,7 @@ cDisc.Parent                 = closed
 
 local cKey = Instance.new("TextLabel")
 cKey.Size                   = UDim2.new(0, 70, 0, 14)
-cKey.Position               = UDim2.new(1, -100, 0.45, 0)
+cKey.Position               = UDim2.new(1, -100, 0.46, 0)
 cKey.BackgroundTransparency = 1
 cKey.Text                   = cfg.keybindGp ~= "None" and cfg.keybindGp or cfg.keybindKb
 cKey.TextColor3             = C.yellow
@@ -530,9 +561,6 @@ cKey.TextSize               = 11
 cKey.TextXAlignment         = Enum.TextXAlignment.Right
 cKey.Parent                 = closed
 
--- ══════════════════════════════════════════════════════════════════════
--- SIZE + MINIMIZE
--- ══════════════════════════════════════════════════════════════════════
 local function applySize()
     local s = getScale()
     if isMinimized then
@@ -572,9 +600,6 @@ end
 minBtn.MouseButton1Click:Connect(function() setMin(true) end)
 cPlus.MouseButton1Click:Connect(function() setMin(false) end)
 
--- ══════════════════════════════════════════════════════════════════════
--- INPUTS
--- ══════════════════════════════════════════════════════════════════════
 powerBox.FocusLost:Connect(function()
     local n = tonumber(powerBox.Text)
     if n then
@@ -604,9 +629,6 @@ saveBtn.MouseButton1Click:Connect(function()
     task.delay(0.7, function() if saveBtn then saveBtn.Text = old end end)
 end)
 
--- ══════════════════════════════════════════════════════════════════════
--- CORE LOGIC
--- ══════════════════════════════════════════════════════════════════════
 local function findRemote()
     local rrs = game:FindFirstChild("RobloxReplicatedStorage")
     if not rrs then return nil end
@@ -750,5 +772,6 @@ updKey()
 updateBtn()
 autoT.set(cfg.autoActivate)
 antiT.set(cfg.antiLag)
+if cfg.antiLag then enableAntiLag() end
 
-print("[Flux Ping Lagger] Exact Match | Open + Closed Assets | OFF/ON")
+print("[Flux Ping Lagger] Final | Open 80752529164731 | Closed 124624013597906 | AntiLag from Supreme")
