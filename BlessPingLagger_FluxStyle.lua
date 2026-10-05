@@ -128,8 +128,8 @@ local BLACKLISTED = {
     [Enum.KeyCode.Unknown] = true,
 }
 
-local ASSET_OPEN   = "rbxassetid://80752529164731"
-local ASSET_CLOSED = "rbxassetid://124624013597906"
+local ASSET_OPEN   = "rbxthumb://type=Asset&id=80752529164731&w=768&h=432"
+local ASSET_CLOSED = "rbxthumb://type=Asset&id=124624013597906&w=768&h=432"
 
 local OPEN_W, OPEN_H     = 275, 435
 local CLOSED_W, CLOSED_H = 280, 95
@@ -145,7 +145,7 @@ mainFrame.Position               = UDim2.new(0.5, -OPEN_W/2, 0.35, -OPEN_H/2)
 mainFrame.BackgroundColor3       = Color3.fromRGB(6, 6, 10)
 mainFrame.BackgroundTransparency = 0
 mainFrame.Image                  = ASSET_OPEN
-mainFrame.ScaleType              = Enum.ScaleType.Stretch
+mainFrame.ScaleType              = Enum.ScaleType.Crop
 mainFrame.Active                 = true
 mainFrame.ClipsDescendants       = true
 mainFrame.BorderSizePixel        = 0
