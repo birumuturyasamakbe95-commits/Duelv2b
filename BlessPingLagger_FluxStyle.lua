@@ -128,8 +128,8 @@ local BLACKLISTED = {
     [Enum.KeyCode.Unknown] = true,
 }
 
-local ASSET_OPEN   = "rbxthumb://type=Asset&id=80752529164731&w=768&h=432"
-local ASSET_CLOSED = "rbxthumb://type=Asset&id=124624013597906&w=768&h=432"
+local ASSET_OPEN   = "rbxassetid://80752529164731"
+local ASSET_CLOSED = "rbxassetid://124624013597906"
 
 local OPEN_W, OPEN_H     = 275, 435
 local CLOSED_W, CLOSED_H = 280, 95
@@ -145,7 +145,7 @@ mainFrame.Position               = UDim2.new(0.5, -OPEN_W/2, 0.35, -OPEN_H/2)
 mainFrame.BackgroundColor3       = Color3.fromRGB(6, 6, 10)
 mainFrame.BackgroundTransparency = 0
 mainFrame.Image                  = ASSET_OPEN
-mainFrame.ScaleType              = Enum.ScaleType.Crop
+mainFrame.ScaleType              = Enum.ScaleType.Stretch
 mainFrame.Active                 = true
 mainFrame.ClipsDescendants       = true
 mainFrame.BorderSizePixel        = 0
@@ -203,13 +203,26 @@ uiLbl.Parent                 = content
 
 local uiVal = Instance.new("TextLabel")
 uiVal.Size                   = UDim2.new(0, 32, 0, 15)
-uiVal.Position               = UDim2.new(0.33, 0, 0.085, 0)
+uiVal.Position               = UDim2.new(0.30, 0, 0.085, 0)
 uiVal.BackgroundTransparency = 1
 uiVal.Text                   = tostring(cfg.uiSize)
 uiVal.TextColor3             = C.white
 uiVal.Font                   = Enum.Font.GothamBold
 uiVal.TextSize               = 12
 uiVal.Parent                 = content
+
+-- ON/OFF status next to UI SIZE (clickable)
+local statusBtn = Instance.new("TextButton")
+statusBtn.Name                   = "StatusBtn"
+statusBtn.Size                   = UDim2.new(0, 36, 0, 18)
+statusBtn.Position               = UDim2.new(0.42, 0, 0.082, 0)
+statusBtn.BackgroundTransparency = 1
+statusBtn.Text                   = "OFF"
+statusBtn.TextColor3             = C.red
+statusBtn.Font                   = Enum.Font.GothamBlack
+statusBtn.TextSize               = 12
+statusBtn.AutoButtonColor        = false
+statusBtn.Parent                 = content
 
 local uiMinus = Instance.new("TextButton")
 uiMinus.Size                   = UDim2.new(0, 24, 0, 24)
@@ -516,13 +529,25 @@ cUi.Parent                 = closed
 
 local cVal = Instance.new("TextLabel")
 cVal.Size                   = UDim2.new(0, 30, 0, 14)
-cVal.Position               = UDim2.new(0.32, 0, 0.46, 0)
+cVal.Position               = UDim2.new(0.30, 0, 0.46, 0)
 cVal.BackgroundTransparency = 1
 cVal.Text                   = tostring(cfg.uiSize)
 cVal.TextColor3             = C.white
 cVal.Font                   = Enum.Font.GothamBold
 cVal.TextSize               = 11
 cVal.Parent                 = closed
+
+local cStatus = Instance.new("TextButton")
+cStatus.Name                   = "CStatus"
+cStatus.Size                   = UDim2.new(0, 36, 0, 16)
+cStatus.Position               = UDim2.new(0.42, 0, 0.45, 0)
+cStatus.BackgroundTransparency = 1
+cStatus.Text                   = "OFF"
+cStatus.TextColor3             = C.red
+cStatus.Font                   = Enum.Font.GothamBlack
+cStatus.TextSize               = 11
+cStatus.AutoButtonColor        = false
+cStatus.Parent                 = closed
 
 local cPlus = Instance.new("TextButton")
 cPlus.Size                   = UDim2.new(0, 26, 0, 26)
@@ -676,10 +701,14 @@ local function updateBtn()
         mainBtn.Text = "ON"
         mainBtn.TextColor3 = C.green
         mStroke.Color = C.green
+        if statusBtn then statusBtn.Text = "ON"; statusBtn.TextColor3 = C.green end
+        if cStatus then cStatus.Text = "ON"; cStatus.TextColor3 = C.green end
     else
         mainBtn.Text = "OFF"
         mainBtn.TextColor3 = C.red
         mStroke.Color = C.red
+        if statusBtn then statusBtn.Text = "OFF"; statusBtn.TextColor3 = C.red end
+        if cStatus then cStatus.Text = "OFF"; cStatus.TextColor3 = C.red end
     end
 end
 
@@ -699,6 +728,8 @@ local function flipLag(state, isManual)
 end
 
 mainBtn.MouseButton1Click:Connect(function() flipLag(not active, true) end)
+statusBtn.MouseButton1Click:Connect(function() flipLag(not active, true) end)
+cStatus.MouseButton1Click:Connect(function() flipLag(not active, true) end)
 
 RunService.Heartbeat:Connect(function()
     if not cfg.autoActivate then
